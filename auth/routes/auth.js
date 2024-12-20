@@ -53,21 +53,28 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Get User by ID Route
-router.get("/user/:id", async (req, res) => {
-  const { id } = req.params;
-
+app.get("/auth/user", async (req, res) => {
   try {
-    // Find user by ID
-    const user = await User.findById(id).select("-password"); // Exclude password field
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Decode the token (replace `SECRET_KEY` with your actual secret)
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const userId = decoded.id;
+
+    // Fetch the user from your database using the userId
+    const user = await User.findById(userId).select("-password");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     res.status(200).json(user);
   } catch (err) {
-    res.status(500).json({ message: "Error retrieving user" });
+    res.status(500).json({ message: "Failed to fetch user data" });
   }
 });
+
 
 module.exports = router;
