@@ -60,7 +60,7 @@ router.get("/auth/user", async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
 
     // Fetch the user from your database using the userId
