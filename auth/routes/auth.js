@@ -53,7 +53,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-app.get("/auth/user", async (req, res) => {
+router.get("/auth/user", async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
