@@ -27,6 +27,7 @@ router.post("/register", async (req, res) => {
 });
 
 // Login Route
+// Login Route
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -43,14 +44,31 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // Generate JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    // Generate JWT without expiration
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+
     res.status(200).json({ token });
   } catch (err) {
     res.status(500).json({ message: "Error logging in" });
   }
 });
+
+// Get User by ID Route
+router.get("/user/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find user by ID
+    const user = await User.findById(id).select("-password"); // Exclude password field
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Error retrieving user" });
+  }
+});
+
 
 module.exports = router;
