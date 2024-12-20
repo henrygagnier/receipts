@@ -6,14 +6,6 @@ const authRoutes = require("./routes/auth");
 
 const app = express();
 
-// CORS configuration (allow specific origins or all origins for development)
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || "*", // Update for specific origins in production
-  methods: ["GET", "POST", "PUT", "DELETE"], // Allowed methods
-  allowedHeaders: ["Content-Type", "Authorization"], // Allow these headers
-};
-
-app.use(cors(corsOptions)); // Apply CORS settings
 app.use(express.json()); // Parse incoming JSON requests
 
 // MongoDB connection
