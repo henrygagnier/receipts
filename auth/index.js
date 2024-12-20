@@ -7,6 +7,7 @@ const authRoutes = require("./routes/auth");
 const app = express();
 
 app.use(express.json()); // Parse incoming JSON requests
+app.use(cors());
 
 // MongoDB connection
 mongoose

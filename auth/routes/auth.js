@@ -60,7 +60,6 @@ router.get("/auth/user", async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Decode the token (replace `SECRET_KEY` with your actual secret)
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
     const userId = decoded.id;
 
