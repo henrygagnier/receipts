@@ -23,7 +23,7 @@ def process_receipt_image(image_path: str) -> Dict[str, Any]:
     text = pytesseract.image_to_string(gray)
     
     # Parse the extracted text
-    return parse_receipt_text(text)
+    return text
 
 def parse_receipt_text(text: str) -> Dict[str, Any]:
     """
