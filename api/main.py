@@ -5,6 +5,11 @@ from receipt_parser import process_receipt_image
 
 app = FastAPI(title="Receipt Processing API")
 
+# Homepage route
+@app.get("/")
+async def homepage():
+    return "i love receipts"
+
 @app.post("/process-receipt/")
 async def process_receipt(file: UploadFile = File(...)):
     """
