@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "difflib": "^0.2.4"
+  }
+}
