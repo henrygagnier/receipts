@@ -113,7 +113,11 @@ function parseItems(lines, config) {
 }
 
 async function processReceiptImage(imagePath) {
-  const worker = await createWorker(conf.language);
+  const worker = await createWorker(conf.language, {
+    options: {
+      corePath: "/public/"
+    }
+  });
   const ret = await worker.recognize(imagePath);
   console.log(ret.data.text);
   await worker.terminate();
