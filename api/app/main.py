@@ -1,7 +1,6 @@
 import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-
 import cv2
 import pytesseract
 import re
@@ -14,13 +13,140 @@ import dateutil.parser
 from dateutil.parser import parse
 import imutils
 
-# Load the config from a JSON file
-def load_config(config_path):
-    with open(config_path, "r") as file:
-        return json.load(file)
+conf = {
+  "language": "en",
+  "results_as_json": true,
+  "markets": {
+    "Wegmans": ["wegmans"],
+    "Main Street Restaurant": ["main street restaurant"]
+  },
+  "sum_keys": [
+    "total",
+    "total amount",
+    "grand total",
+    "amount",
+    "final total",
+    "subtotal",
+    "sum",
+    "balance due",
+    "amount due",
+    "due",
+    "paid",
+    "total cost",
+    "total price",
+    "total value",
+    "total payment",
+    "total paid",
+    "total charge",
+    "bill total",
+    "outstanding balance",
+    "final amount",
+    "total due",
+    "final sum",
+    "net total",
+    "overall total",
+    "total value",
+    "full amount",
+    "grand total amount",
+    "charge",
+    "total bill",
+    "total to pay",
+    "amount to pay",
+    "payment due",
+    "payment total",
+    "balance",
+    "total charges",
+    "final balance",
+    "total payable",
+    "total outstanding",
+    "amount payable",
+    "payable total",
+    "total receipt",
+    "total sale",
+    "net amount",
+    "gross total",
+    "amount to be paid",
+    "total payable amount",
+    "outstanding amount",
+    "remaining balance",
+    "final cost",
+    "final payment",
+    "total expense",
+    "total fee",
+    "amount remaining",
+    "total after tax",
+    "cost total",
+    "final cost"
+  ],
+  "ignore_keys": [
+    "tax",
+    "change",
+    "cash",
+    "credit card",
+    "total",
+    "total amount",
+    "grand total",
+    "amount",
+    "final total",
+    "subtotal",
+    "sum",
+    "balance due",
+    "amount due",
+    "due",
+    "paid",
+    "total cost",
+    "total price",
+    "total value",
+    "total payment",
+    "total paid",
+    "total charge",
+    "bill total",
+    "outstanding balance",
+    "final amount",
+    "total due",
+    "final sum",
+    "net total",
+    "overall total",
+    "total value",
+    "full amount",
+    "grand total amount",
+    "charge",
+    "total bill",
+    "total to pay",
+    "amount to pay",
+    "payment due",
+    "payment total",
+    "balance",
+    "total charges",
+    "final balance",
+    "total payable",
+    "total outstanding",
+    "amount payable",
+    "payable total",
+    "total receipt",
+    "total sale",
+    "net amount",
+    "gross total",
+    "amount to be paid",
+    "total payable amount",
+    "outstanding amount",
+    "remaining balance",
+    "final cost",
+    "final payment",
+    "total expense",
+    "total fee",
+    "amount remaining",
+    "total after tax",
+    "cost total",
+    "final cost",
+    "surcharge",
+    "surchrg"
+  ],
+  "sum_format": "\\d+(\\.\\s?|,\\s?|[^a-zA-Z\\d])\\d{2}",
+  "item_format": "\\b[\\w\\s]+ \\d+(\\.\\d{1,2})?\\b",
+  "date_format": "r(\\d{2}\\.\\d{2}\\.\\d{2,4})|(\\d{2,4}\\/\\d{2}\\/\\d{2})|(\\d{2}\\/\\d{2}\\/\\d{4})"
+}
 
-# Config loading
-conf = load_config("config.json")
 
 def process_receipt_image(image_path: str) -> Dict[str, Any]:
     """
