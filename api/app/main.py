@@ -13,6 +13,8 @@ import dateutil.parser
 from dateutil.parser import parse
 import imutils
 
+pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+
 conf = {
     "language": "en",
     "results_as_json": True,
