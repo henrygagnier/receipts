@@ -1,48 +1,37 @@
-const express = require("express");
 const multer = require("multer");
 const { createWorker } = require("tesseract.js");
 const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
-var difflib = require("difflib");
-const bodyParser = require("body-parser");
+const difflib = require("difflib");
 
-const app = express();
-const port = 3000;
-
-app.use(bodyParser.json());
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "tmp/");  // Store files in "tmp" directory
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
-
-// Configuration (similar to your Python conf)
 const conf = {
   language: "eng",
-  sum_keys: ["total", "grand total", "total amount", "amount", "final total", "subtotal", "balance due"],
+  sum_keys: [
+    "total",
+    "grand total",
+    "total amount",
+    "amount",
+    "final total",
+    "subtotal",
+    "balance due",
+  ],
   ignore_keys: ["tax", "change", "cash", "credit card", "surcharge"],
 };
 
-// Route for the homepage
-app.get("/", (req, res) => {
-  res.send("I love receipts");
-});
-
 // Helper function to normalize text
 function normalize(lines) {
-  return lines.split("\n").map(line => line.trim().toLowerCase()).filter(line => line.length > 0);
+  return lines
+    .split("\n")
+    .map((line) => line.trim().toLowerCase())
+    .filter((line) => line.length > 0);
 }
 
 function fuzzyFind(lines, keyword, accuracy = 0.6) {
   for (let line of lines) {
     const matches = difflib.getCloseMatches(
-      keyword, line.split(" "),
+      keyword,
+      line.split(" "),
       1,
       accuracy
     );
@@ -84,7 +73,7 @@ function parseItems(lines, config) {
   const itemFormat = /\b([A-Za-z][\w\s]*) (\d+[\.,]\d{2})\b/; // Item format (name + price)
 
   for (let line of lines) {
-    if (config.ignore_keys.some(keyword => line.includes(keyword))) {
+    if (config.ignore_keys.some((keyword) => line.includes(keyword))) {
       continue;
     }
 
@@ -104,13 +93,13 @@ async function processReceiptImage(imagePath) {
   const ret = await worker.recognize(imagePath);
   console.log(ret.data.text);
   await worker.terminate();
-  return (parseReceipt(conf, ret.data.text));
+  return parseReceipt(conf, ret.data.text);
 }
 
 // Function to parse receipt from raw OCR text
 function parseReceipt(config, raw) {
   const lines = normalize(raw);
-  const date = parseDate(lines, "/(\\d{2}\\/\\d{2}\\/\\d{4}|\\d{2}\\.\\d{2}\\.\\d{4})/");
+  const date = parseDate(lines, /(\d{2}\/\d{2}\/\d{4}|\d{2}\.\d{2}\.\d{4})/);
   const totalSum = parseSum(lines, config.sum_keys, /(\d+(?:\.\d{2})?)/);
   const items = parseItems(lines, config);
 
@@ -118,31 +107,48 @@ function parseReceipt(config, raw) {
     market: "Unknown", // You can implement the market parsing if needed
     date: date,
     sum: totalSum,
-    items: items
+    items: items,
   };
 }
 
-// Route to process uploaded receipt image
-app.post("/process-receipt", upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
+const storage = multer.memoryStorage(); // Store files in memory for serverless function
+
+const upload = multer({ storage: storage });
+
+module.exports = async (req, res) => {
+  // Check if the method is POST
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const imagePath = path.join(__dirname, "tmp", req.file.filename);
+  // Handle file upload via multer
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: "Error during file upload" });
+    }
 
-  try {
-    const receiptData = await processReceiptImage(imagePath);
-    
-    fs.unlinkSync(imagePath);
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-    res.json(receiptData);
+    // Save the file to the tmp folder (Vercel's writable directory)
+    const tmpPath = path.join("/tmp", req.file.originalname);
+    try {
+      fs.writeFileSync(tmpPath, req.file.buffer);
 
-  } catch (error) {
-    fs.unlinkSync(imagePath);
-    res.status(500).json({ error: "Error processing receipt: " + error.message });
-  }
-});
+      const receiptData = await processReceiptImage(tmpPath);
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+      // Clean up temporary file
+      fs.unlinkSync(tmpPath);
+
+      res.json(receiptData);
+    } catch (error) {
+      console.error(error);
+      // Clean up temporary file in case of error
+      fs.unlinkSync(tmpPath);
+      res
+        .status(500)
+        .json({ error: "Error processing receipt: " + error.message });
+    }
+  });
+};
