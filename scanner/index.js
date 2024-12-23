@@ -91,7 +91,7 @@ function parseItems(lines, config) {
 async function processReceiptImage(imagePath) {
   const worker = await createWorker({
     logger: (m) => console.log(m),
-    corePath: "/public/tesseract-core-simd.wasm",
+    corePath: "/public",
   });
   const ret = await worker.recognize(imagePath);
   console.log(ret.data.text);
