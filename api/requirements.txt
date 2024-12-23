@@ -5,3 +5,4 @@ pytesseract
 python-multipart
 python-dateutil
 imutils
+spacy
