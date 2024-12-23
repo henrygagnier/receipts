@@ -6,28 +6,3 @@
 
 # Environment variables file
 .env
-
-# Git files
-.git/**
-
-# Virtual environment
-.venv/**
-
-# Automation scripts
-automations/**
-
-# Documentation
-docs/**
-
-# Log directories
-logdir/**
-
-# Test files
-tests/**
-
-# Prisma migrations
-prisma/migrations/**
-
-README.md
-pytest.ini
-package.json
