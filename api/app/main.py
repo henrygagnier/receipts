@@ -254,10 +254,10 @@ async def process_receipt(file: UploadFile = File(...)):
             f.write(contents)
         
         # Process the file here
-        # receipt_data = process_receipt_image(file_path)
+        receipt_data = process_receipt_image(file_path)
         
         os.remove(file_path)  # Clean up after processing
-        # return JSONResponse(content=receipt_data)
+        return JSONResponse(content=receipt_data)
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
