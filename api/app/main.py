@@ -257,31 +257,51 @@ async def process_receipt(file: UploadFile = File(...)):
     :param file: Uploaded image file
     :return: Parsed receipt contents as JSON
     """
-    logger.info("Received file: %s", file.filename)
+    # Log the received file information
+    logger.info("Received file: %s with content type: %s", file.filename, file.content_type)
     
+    # Check if the uploaded file is of image type
     if not file.content_type.startswith('image/'):
         logger.error("Invalid file type: %s", file.content_type)
         raise HTTPException(status_code=400, detail="Only image files are supported")
     
-    os.makedirs("uploads", exist_ok=True)
+    os.makedirs("uploads", exist_ok=True)  # Make sure the uploads directory exists
+    logger.debug("Ensured the uploads directory exists")
 
+    # Define the file path where the image will be saved
     file_path = os.path.join("uploads", file.filename)
+    logger.debug("Saving file to path: %s", file_path)
+
     try:
+        # Save the uploaded file
         logger.info("Saving uploaded file to %s", file_path)
-        contents = await file.read()
+        contents = await file.read()  # Read the file content
+        logger.debug("Read %d bytes from file", len(contents))
+
         with open(file_path, "wb") as f:
             f.write(contents)
-        
+        logger.info("File saved successfully to %s", file_path)
+
+        # Process the saved image (OCR and receipt parsing)
         logger.info("Processing receipt image: %s", file_path)
         receipt_data = process_receipt_image(file_path)
         
+        # Log the processed data (if needed, only log non-sensitive data)
+        logger.debug("Receipt data processed: %s", receipt_data)
+
+        # Clean up the file after processing
+        logger.info("Removing uploaded file from the server: %s", file_path)
         os.remove(file_path)
-        logger.info("Successfully processed receipt: %s", file.filename)
-        
+        logger.info("Successfully removed file from server")
+
         return JSONResponse(content=receipt_data)
     
     except Exception as e:
         logger.error("Error processing receipt: %s", str(e), exc_info=True)
+        
+        # Attempt to clean up if something goes wrong
         if os.path.exists(file_path):
+            logger.warning("File %s exists, removing due to error", file_path)
             os.remove(file_path)
+        
         raise HTTPException(status_code=500, detail=f"Error processing receipt: {str(e)}")
