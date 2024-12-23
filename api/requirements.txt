@@ -5,4 +5,3 @@ pytesseract
 python-multipart
 python-dateutil
 imutils
-scipy
