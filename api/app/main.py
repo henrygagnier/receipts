@@ -2,8 +2,13 @@ import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from receipt_parser import process_receipt_image
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from mangum import Mangum  # For AWS Lambda (which Vercel uses)
 
 app = FastAPI(title="Receipt Processing API")
+
+# Add trusted host middleware (optional but recommended for security)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # Homepage route
 @app.get("/")
@@ -39,3 +44,5 @@ async def process_receipt(file: UploadFile = File(...)):
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Error processing receipt: {str(e)}")
+
+handler = Mangum(app)
