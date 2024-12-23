@@ -6,9 +6,20 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { ScrollView } from "react-native";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
+import { useGlobalContext } from "@/context/GlobalProvider";
 
 export default function Index() {
+  const { isLoading, isLoggedIn } = useGlobalContext();
+
+  console.log(isLoading, isLoggedIn)
+
+  if (!isLoading && isLoggedIn) {
+    return (
+      <Redirect href="/home" />
+    )
+  }
+
   return (
     <SafeAreaView className="h-full bg-white">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -29,8 +40,6 @@ export default function Index() {
               decisions.
             </Text>
           </View>
-
-          {/* Button Section */}
           <TouchableOpacity
             onPress={() => router.push("/sign-in")}
             className="bg-green-500 mt-10 rounded-full px-8 py-4 active:opacity-80"

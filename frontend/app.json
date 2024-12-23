@@ -23,6 +23,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow GreenPoints to access your camera",
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
