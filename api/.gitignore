@@ -28,8 +28,6 @@ tests/**
 # Prisma migrations
 prisma/migrations/**
 
-# Specific files
-Dockerfile
 README.md
 pytest.ini
 package.json
