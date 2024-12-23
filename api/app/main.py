@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import cv2
@@ -13,6 +14,11 @@ import dateutil.parser
 from dateutil.parser import parse
 import imutils
 
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+# Configuration
 conf = {
     "language": "en",
     "results_as_json": True,
@@ -49,7 +55,6 @@ conf = {
     "date_format": "r(\\d{2}\\.\\d{2}\\.\\d{2,4})|(\\d{2,4}\\/\\d{2}\\/\\d{2})|(\\d{2}\\/\\d{2}\\/\\d{4})"
 }
 
-
 def process_receipt_image(image_path: str) -> Dict[str, Any]:
     """
     Process a receipt image and extract key information
@@ -57,8 +62,13 @@ def process_receipt_image(image_path: str) -> Dict[str, Any]:
     :param image_path: Path to the receipt image
     :return: Dictionary of extracted receipt information
     """
+    logger.info("Processing receipt image: %s", image_path)
     
     img_orig = cv2.imread(image_path)
+    if img_orig is None:
+        logger.error("Failed to read image: %s", image_path)
+        raise HTTPException(status_code=400, detail="Failed to read the image")
+
     image = img_orig.copy()
     image = imutils.resize(image, width=500)
     ratio = img_orig.shape[1] / float(image.shape[1])
@@ -69,7 +79,8 @@ def process_receipt_image(image_path: str) -> Dict[str, Any]:
         cv2.cvtColor(gray, cv2.COLOR_BGR2RGB), config=options
     )
 
-    return(parse_receipt(conf, text2))
+    logger.debug("OCR text extracted: %s", text2[:500])  # Log the first 500 characters for debugging
+    return parse_receipt(conf, text2)
 
 def normalize(lines):
     """
@@ -117,10 +128,6 @@ def parse_date(lines, date_format):
                     return None
     return None
 
-import re
-import fnmatch
-from collections import namedtuple
-
 def parse_items(lines, config, market):
     """
     Parse items from the lines
@@ -155,7 +162,6 @@ def parse_items(lines, config, market):
             items.append(item(article_name, article_sum))
 
     return items
-
 
 def parse_market(lines, config):
     """
@@ -217,17 +223,25 @@ def parse_receipt(config, raw):
     :param raw: List of str
     :return: json string
     """
+    logger.info("Parsing receipt data")
     lines = normalize(raw)
-    print(lines)
+    logger.debug("Normalized lines: %s", lines[:10])  # Log the first 10 lines for debugging
     
     market = parse_market(lines, config)
+    logger.debug("Market parsed: %s", market)
+    
     date = parse_date(lines, config["date_format"])
+    logger.debug("Date parsed: %s", date)
+    
     total_sum = parse_sum(lines, config, config["sum_keys"], config["sum_format"])
+    logger.debug("Total sum parsed: %s", total_sum)
+    
     items = parse_items(lines, config, market)
+    logger.debug("Items parsed: %s", items[:5])  # Log the first 5 items for debugging
+    
+    return to_json(market, date, total_sum, items)
 
-    return (to_json(market, date, total_sum, items), lines)
-
-
+# FastAPI application
 app = FastAPI(title="Receipt Processing API")
 
 # Homepage route
@@ -243,24 +257,31 @@ async def process_receipt(file: UploadFile = File(...)):
     :param file: Uploaded image file
     :return: Parsed receipt contents as JSON
     """
+    logger.info("Received file: %s", file.filename)
+    
     if not file.content_type.startswith('image/'):
+        logger.error("Invalid file type: %s", file.content_type)
         raise HTTPException(status_code=400, detail="Only image files are supported")
     
     os.makedirs("uploads", exist_ok=True)
 
     file_path = os.path.join("uploads", file.filename)
     try:
+        logger.info("Saving uploaded file to %s", file_path)
         contents = await file.read()
         with open(file_path, "wb") as f:
             f.write(contents)
         
+        logger.info("Processing receipt image: %s", file_path)
         receipt_data = process_receipt_image(file_path)
         
         os.remove(file_path)
+        logger.info("Successfully processed receipt: %s", file.filename)
         
         return JSONResponse(content=receipt_data)
     
     except Exception as e:
+        logger.error("Error processing receipt: %s", str(e), exc_info=True)
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Error processing receipt: {str(e)}")
