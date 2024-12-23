@@ -263,5 +263,3 @@ async def process_receipt(file: UploadFile = File(...)):
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Error processing receipt: {str(e)}")
-
-handler = Mangum(app)
