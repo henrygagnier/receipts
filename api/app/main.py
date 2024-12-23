@@ -245,6 +245,8 @@ async def process_receipt(file: UploadFile = File(...)):
     """
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="Only image files are supported")
+    
+    os.makedirs("uploads", exist_ok=True)
 
     file_path = os.path.join("uploads", file.filename)
     try:
@@ -252,11 +254,11 @@ async def process_receipt(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(contents)
         
-        receipt_data = process_receipt_image(file_path)
+        #receipt_data = process_receipt_image(file_path)
         
         os.remove(file_path)
         
-        return JSONResponse(content=receipt_data)
+        #return JSONResponse(content=receipt_data)
     
     except Exception as e:
         if os.path.exists(file_path):
