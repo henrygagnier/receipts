@@ -2,13 +2,8 @@ import os
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from receipt_parser import process_receipt_image
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from mangum import Mangum  # For AWS Lambda (which Vercel uses)
 
 app = FastAPI(title="Receipt Processing API")
-
-# Add trusted host middleware (optional but recommended for security)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # Homepage route
 @app.get("/")
