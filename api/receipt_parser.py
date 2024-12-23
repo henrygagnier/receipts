@@ -3,6 +3,21 @@ import pytesseract
 import re
 import json
 from typing import Dict, Any
+import fnmatch
+from collections import namedtuple
+from difflib import get_close_matches
+import dateutil.parser
+from dateutil.parser import parse
+import imutils
+from imutils.perspective import four_point_transform
+
+# Load the config from a JSON file
+def load_config(config_path):
+    with open(config_path, "r") as file:
+        return json.load(file)
+
+# Config loading
+conf = load_config("config.json")
 
 def process_receipt_image(image_path: str) -> Dict[str, Any]:
     """
@@ -11,73 +26,208 @@ def process_receipt_image(image_path: str) -> Dict[str, Any]:
     :param image_path: Path to the receipt image
     :return: Dictionary of extracted receipt information
     """
-    image = cv2.imread(image_path)
     
-    # Convert to grayscale
+    img_orig = cv2.imread(image_path)
+    image = img_orig.copy()
+    image = imutils.resize(image, width=500)
+    ratio = img_orig.shape[1] / float(image.shape[1])
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # Apply thresholding to preprocess the image
-    gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    
-    # Perform text extraction
-    text = pytesseract.image_to_string(gray)
-    
-    # Parse the extracted text
-    return text
+    blurred = cv2.GaussianBlur(
+        gray,
+        (
+            5,
+            5,
+        ),
+        0,
+    )
+    edged = cv2.Canny(blurred, 75, 200)
+    cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
 
-def parse_receipt_text(text: str) -> Dict[str, Any]:
+    # initialize a contour that corresponds to the receipt outline
+    receiptCnt = None
+    # loop over the contours
+    for c in cnts:
+        # approximate the contour
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        # if our approximated contour has four points, then we can
+        # assume we have found the outline of the receipt
+        if len(approx) == 4:
+            receiptCnt = approx
+            break
+    if receiptCnt is None:
+        raise Exception(
+            (
+                "Could not find receipt outline. "
+            "Try debugging your edge detection and contour steps."
+        )
+        )
+
+    receipt = four_point_transform(img_orig, receiptCnt.reshape(4, 2) * ratio)
+    options = "--psm 6"
+    text = pytesseract.image_to_string(
+        cv2.cvtColor(receipt, cv2.COLOR_BGR2RGB), config=options
+    )
+    text2 = pytesseract.image_to_string(
+        cv2.cvtColor(gray, cv2.COLOR_BGR2RGB), config=options
+    )
+
+    return(parse_receipt(conf, text), parse_receipt(conf, text2))
+
+def normalize(lines):
     """
-    Parse the extracted text to structure receipt information
-    
-    :param text: Raw OCR extracted text
-    :return: Structured receipt data
+    Normalize the lines: strip empty lines and convert to lowercase
+    :param lines: List of str
+    :return: List of str
     """
-    # Basic parsing - these are example regex patterns
-    receipt_data = {
-        "store_name": _extract_store_name(text),
-        "total": _extract_total(text),
-        "date": _extract_date(text),
-        "items": _extract_items(text)
-    }
+    lines = lines.split("\n")
     
-    return receipt_data
+    # Remove empty lines and return the cleaned list
+    return [line.lower() for line in lines if line.strip()]
 
-def _extract_store_name(text: str) -> str:
-    """Extract store name from receipt text"""
-    # Example store name extraction
-    match = re.search(r'^([A-Za-z\s]+)', text, re.MULTILINE)
-    return match.group(1).strip() if match else "Unknown Store"
+def fuzzy_find(lines, keyword, accuracy=0.6):
+    """
+    Find the closest match for a keyword in the lines using fuzzy matching
+    :param lines: List of str
+    :param keyword: str
+    :param accuracy: float
+    :return: str
+    """
+    for line in lines:
+        words = line.split()
+        matches = get_close_matches(keyword, words, 1, accuracy)
+        if matches:
+            return line
 
-def _extract_total(text: str) -> float:
-    """Extract total amount from receipt text"""
-    # Look for total with optional currency symbol
-    match = re.search(r'TOTAL\s*[:]*\s*[\$€]?(\d+\.\d{2})', text, re.IGNORECASE)
-    return float(match.group(1)) if match else 0.0
-
-def _extract_date(text: str) -> str:
-    """Extract date from receipt text"""
-    # Look for date in common formats
-    date_patterns = [
-        r'\d{1,2}/\d{1,2}/\d{2,4}',  # MM/DD/YYYY or DD/MM/YYYY
-        r'\d{2,4}-\d{1,2}-\d{1,2}'   # YYYY-MM-DD or DD-MM-YYYY
-    ]
-    
-    for pattern in date_patterns:
-        match = re.search(pattern, text)
+def parse_date(lines, date_format):
+    """
+    Parse the date from the lines
+    :param lines: List of str
+    :param date_format: str
+    :return: str
+    """
+    for line in lines:
+        match = re.search(date_format, line)
         if match:
-            return match.group(0)
-    
-    return "Unknown Date"
+            # Find the first non-None capturing group
+            date_str = next((g for g in match.groups() if g is not None), None)
+            if date_str:
+                date_str = date_str.replace(" ", "")  # Remove spaces
+                try:
+                    parse(date_str)
+                    return date_str
+                except ValueError:
+                    return None
+    return None
 
-def _extract_items(text: str) -> list:
-    """Extract individual items from receipt text"""
+import re
+import fnmatch
+from collections import namedtuple
+
+def parse_items(lines, config, market):
+    """
+    Parse items from the lines
+    :param lines: List of str
+    :param config: dict
+    :param market: str
+    :return: List of tuples
+    """
     items = []
-    item_lines = re.findall(r'(.+)\s+(\d+\.\d{2})', text)
+    item = namedtuple("item", ("article", "sum"))
+
+    ignored_words = config["ignore_keys"]
+    stop_words = config["sum_keys"]
     
-    for item, price in item_lines:
-        items.append({
-            "name": item.strip(),
-            "price": float(price)
-        })
-    
+    # Updated regex format for item parsing
+    item_format = r"\b([A-Za-z][\w\s]*) (\d+[\.,]\d{2})\b"
+
+    for line in lines:
+        parse_stop = False
+        for ignore_word in ignored_words:
+            if fnmatch.fnmatch(line, f"*{ignore_word}*"):
+                parse_stop = True
+                break
+
+        if parse_stop:
+            continue
+
+        match = re.search(item_format, line)
+        if match:
+            article_name = match.group(1).strip()  # Clean up any leading/trailing spaces
+            article_sum = match.group(2).replace(",", ".")  # Replace commas with dots for decimal
+            items.append(item(article_name, article_sum))
+
     return items
+
+
+def parse_market(lines, config):
+    """
+    Parse market from the lines
+    :param lines: List of str
+    :param config: dict
+    :return: str
+    """
+    for int_accuracy in range(10, 6, -1):
+        accuracy = int_accuracy / 10.0
+        min_accuracy, market_match = -1, None
+        for market, spellings in config["markets"].items():
+            for spelling in spellings:
+                line = fuzzy_find(lines, spelling, accuracy)
+                if line and (accuracy < min_accuracy or min_accuracy == -1):
+                    min_accuracy = accuracy
+                    market_match = market
+                    return market_match
+    return market_match
+
+def parse_sum(lines, config, sum_keys, sum_format):
+    """
+    Parse sum from the lines
+    :param lines: List of str
+    :param config: dict
+    :param sum_keys: list of str
+    :param sum_format: str
+    :return: str
+    """
+    for sum_key in sum_keys:
+        sum_line = fuzzy_find(lines, sum_key)
+        if sum_line:
+            sum_line = sum_line.replace(",", ".")
+            sum_float = re.search(sum_format, sum_line)
+            if sum_float:
+                return sum_float.group(0)
+
+def to_json(market, date, total_sum, items):
+    """
+    Convert parsed data to JSON
+    :param market: str
+    :param date: str
+    :param total_sum: str
+    :param items: List of tuples
+    :return: json string
+    """
+    object_data = {
+        "market": market,
+        "date": date,
+        "sum": total_sum,
+        "items": items,
+    }
+    return json.dumps(object_data)
+
+def parse_receipt(config, raw):
+    """
+    Parse receipt from raw data
+    :param config: dict
+    :param raw: List of str
+    :return: json string
+    """
+    lines = normalize(raw)
+    print(lines)
+    
+    market = parse_market(lines, config)
+    date = parse_date(lines, config["date_format"])
+    total_sum = parse_sum(lines, config, config["sum_keys"], config["sum_format"])
+    items = parse_items(lines, config, market)
+
+    return (to_json(market, date, total_sum, items), lines)
