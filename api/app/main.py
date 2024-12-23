@@ -64,6 +64,7 @@ def process_receipt_image(image_path: str) -> Dict[str, Any]:
     ratio = img_orig.shape[1] / float(image.shape[1])
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
+    options = "--psm 6"
     text2 = pytesseract.image_to_string(
         cv2.cvtColor(gray, cv2.COLOR_BGR2RGB), config=options
     )
