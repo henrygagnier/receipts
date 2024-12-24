@@ -11,10 +11,9 @@ const port = 3000;
 
 app.use(bodyParser.json());
 
-// Configuration for file storage using Vercel's /tmp directory
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "/tmp/"); // Store files in Vercel's temporary directory
+    cb(null, "/tmp/");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -236,7 +235,7 @@ function parseReceipt(config, raw) {
   const lines = normalize(raw);
   const date = parseDate(
     lines,
-    "/(\\d{2}\\/\\d{2}\\/\\d{4}|\\d{2}\\.\\d{2}\\.\\d{4})/"
+    /\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b/
   );
   const totalSum = parseSum(lines, config.sum_keys, /(\d+(?:\.\d{2})?)/);
   const items = parseItems(lines, config);
