@@ -22,27 +22,136 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Configuration (similar to your Python conf)
 const conf = {
   language: "eng",
   sum_keys: [
     "total",
-    "grand total",
     "total amount",
+    "grand total",
     "amount",
     "final total",
     "subtotal",
+    "sum",
     "balance due",
+    "amount due",
+    "due",
+    "paid",
+    "total cost",
+    "total price",
+    "total value",
+    "total payment",
+    "total paid",
+    "total charge",
+    "bill total",
+    "outstanding balance",
+    "final amount",
+    "total due",
+    "final sum",
+    "net total",
+    "overall total",
+    "total value",
+    "full amount",
+    "grand total amount",
+    "charge",
+    "total bill",
+    "total to pay",
+    "amount to pay",
+    "payment due",
+    "payment total",
+    "balance",
+    "total charges",
+    "final balance",
+    "total payable",
+    "total outstanding",
+    "amount payable",
+    "payable total",
+    "total receipt",
+    "total sale",
+    "net amount",
+    "gross total",
+    "amount to be paid",
+    "total payable amount",
+    "outstanding amount",
+    "remaining balance",
+    "final cost",
+    "final payment",
+    "total expense",
+    "total fee",
+    "amount remaining",
+    "total after tax",
+    "cost total",
+    "final cost",
   ],
-  ignore_keys: ["tax", "change", "cash", "credit card", "surcharge"],
+  ignore_keys: [
+    "tax",
+    "change",
+    "cash",
+    "credit card",
+    "total",
+    "total amount",
+    "grand total",
+    "amount",
+    "final total",
+    "subtotal",
+    "sum",
+    "balance due",
+    "amount due",
+    "due",
+    "paid",
+    "total cost",
+    "total price",
+    "total value",
+    "total payment",
+    "total paid",
+    "total charge",
+    "bill total",
+    "outstanding balance",
+    "final amount",
+    "total due",
+    "final sum",
+    "net total",
+    "overall total",
+    "total value",
+    "full amount",
+    "grand total amount",
+    "charge",
+    "total bill",
+    "total to pay",
+    "amount to pay",
+    "payment due",
+    "payment total",
+    "balance",
+    "total charges",
+    "final balance",
+    "total payable",
+    "total outstanding",
+    "amount payable",
+    "payable total",
+    "total receipt",
+    "total sale",
+    "net amount",
+    "gross total",
+    "amount to be paid",
+    "total payable amount",
+    "outstanding amount",
+    "remaining balance",
+    "final cost",
+    "final payment",
+    "total expense",
+    "total fee",
+    "amount remaining",
+    "total after tax",
+    "cost total",
+    "final cost",
+    "surcharge",
+    "surchrg",
+  ],
 };
 
-// Route for the homepage
 app.get("/", (req, res) => {
   res.send("I love receipts");
 });
 
-// Helper function to normalize text
 function normalize(lines) {
   return lines
     .split("\n")
@@ -90,10 +199,9 @@ function parseDate(lines, dateFormat) {
   return null;
 }
 
-// Function to parse items from receipt
 function parseItems(lines, config) {
   const items = [];
-  const itemFormat = /\b([A-Za-z][\w\s]*) (\d+[\.,]\d{2})\b/; // Item format (name + price)
+  const itemFormat = /\b([A-Za-z][\w\s]*) (\d+[\.,]\d{2})\b/;
 
   for (let line of lines) {
     if (config.ignore_keys.some((keyword) => line.includes(keyword))) {
