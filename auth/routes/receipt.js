@@ -8,6 +8,10 @@ router.post("/create", async (req, res) => {
     const { storeName, receiptId, userId, items, datePurchased, total } =
       req.body;
 
+      if (items.length() == 0) {
+        return res.status(400).json({ message: "No items specified." });
+      }
+
       if (!userId) {
         return res.status(400).json({ message: "All fields are required." });
       }
