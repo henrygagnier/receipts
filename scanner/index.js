@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "/tmp/");
+    cb(null, "tmp/");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -254,7 +254,7 @@ app.post("/process-receipt", upload.single("file"), async (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const imagePath = path.join("/tmp", req.file.filename);
+  const imagePath = path.join("tmp/", req.file.filename);
 
   try {
     const receiptData = await processReceiptImage(imagePath);

@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
+const receiptRoutes = require("./routes/receipt");
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.get("/", (req, res) => {
 
 // Authentication routes
 app.use("/auth", authRoutes);
+app.use("/receipt", receiptRoutes);
 
 // Error handling for undefined routes
 app.use((req, res, next) => {

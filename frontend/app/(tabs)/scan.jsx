@@ -63,19 +63,17 @@ export default function App() {
       });
 
       const response = await fetch(
-        "https://receipts-scanner.vercel.app/process-receipt/",
+        "https://receipts-phi.vercel.app/process-receipt/",
         {
           method: "POST",
           body: formData,
         }
       );
 
-      Alert.alert("hi!!!!");
-
       if (response.ok) {
-        const data =  response;
+        const data =  response.json();
         console.log("Data", data)
-        //setReceiptData(data); // Display parsed receipt data
+        setReceiptData(data); // Display parsed receipt data
       } else {
         const error = response.text();
         //Alert.alert("Error", error.detail || error);

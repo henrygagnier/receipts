@@ -4,6 +4,7 @@
     "src": "index.js",
     "use": "@vercel/node",
     "config": {
+      "maxDuration": 20,
       "includeFiles": [
         "node_modules/tesseract.js-core/*",
         "node_modules/tesseract.js-core/tesseract-core-simd.wasm",
