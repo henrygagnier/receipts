@@ -9,7 +9,7 @@ const ReceiptSchema = new mongoose.Schema(
     receiptId: {
       type: String,
       required: false,
-      unique: true,
+      unique: false,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
