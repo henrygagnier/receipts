@@ -19,6 +19,7 @@ router.post("/create", async (req, res) => {
       items,
       datePurchased,
       total,
+      points: 1
     });
 
     const savedReceipt = await newReceipt.save();

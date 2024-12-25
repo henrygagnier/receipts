@@ -42,6 +42,10 @@ const ReceiptSchema = new mongoose.Schema(
       type: Number,
       required: false,
     },
+    points: {
+      type: Number,
+      required: false,
+    },
   },
   {
     timestamps: true,
